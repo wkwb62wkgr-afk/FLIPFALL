@@ -1,45 +1,42 @@
 <!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>FLIPFALL</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#070912"><title>FLIPFALL</title>
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07080c;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;touch-action:none}canvas{display:block;width:100%;height:100%}#hint{position:fixed;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom));text-align:center;color:#777;font-size:12px;pointer-events:none;opacity:.8}
-</style>
-</head>
-<body>
-<canvas id="game"></canvas><div id="hint"></div>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#070912;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#fff}body{touch-action:manipulation}canvas{position:fixed;inset:0;width:100%;height:100%}button{font:inherit;border:0;color:#fff;cursor:pointer}#ui{position:fixed;inset:0;pointer-events:none}.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;pointer-events:auto}.hidden{display:none!important}.logo{font-size:clamp(54px,15vw,96px);font-weight:1000;letter-spacing:-.075em;line-height:.85;text-shadow:0 0 35px rgba(100,220,255,.3)}.logo span{color:#67e8f9}.tag{margin-top:14px;font-weight:800;letter-spacing:.24em;font-size:12px;color:#aab4c9}.play{margin-top:42px;min-width:220px;padding:18px 32px;border-radius:20px;background:linear-gradient(135deg,#67e8f9,#8b5cf6);font-size:20px;font-weight:950;box-shadow:0 15px 45px rgba(103,232,249,.2),inset 0 1px 0 #fff6}.play:active{transform:scale(.97)}.best{margin-top:22px;color:#8490a8;font-size:14px;font-weight:700}.best b{color:#fff}.hint{position:absolute;bottom:30px;color:#67728a;font-size:11px;letter-spacing:.13em;text-transform:uppercase}.hud{position:absolute;top:max(18px,env(safe-area-inset-top));left:0;right:0;display:flex;justify-content:space-between;padding:0 18px}.score{text-align:center;margin:auto}.score .n{font-size:40px;font-weight:1000;letter-spacing:-.04em}.score .l{font-size:9px;letter-spacing:.2em;color:#748097;font-weight:900}.pill{background:#101524aa;border:1px solid #ffffff12;padding:9px 12px;border-radius:14px;font-size:11px;color:#94a0b8;font-weight:800;backdrop-filter:blur(12px)}.gameover .small{color:#77839a;letter-spacing:.16em;font-size:11px;font-weight:900}.gameover h2{font-size:58px;letter-spacing:-.07em;margin:8px 0 4px}.stats{display:flex;gap:10px;margin:20px 0 10px}.stat{min-width:110px;padding:13px 18px;background:#101524cc;border:1px solid #ffffff12;border-radius:17px;text-align:center}.stat b{display:block;font-size:25px}.stat span{font-size:9px;color:#78849c;letter-spacing:.14em;font-weight:900}.row{display:flex;gap:10px;margin-top:18px}.secondary{padding:15px 20px;border-radius:16px;background:#151b2b;border:1px solid #ffffff12;font-weight:850}.tip{margin-top:20px;color:#68748c;font-size:11px}.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}.toast{position:absolute;left:50%;top:19%;transform:translateX(-50%) translateY(-10px);font-weight:1000;letter-spacing:.08em;opacity:0;transition:.2s;white-space:nowrap}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style></head><body>
+<canvas id="c"></canvas><div id="ui">
+<section id="menu" class="screen"><div class="logo">FLIP<span>FALL</span></div><div class="tag">ONE TAP · ONE CHANCE</div><button id="play" class="play">PLAY</button><div class="best">BEST <b id="bestMenu">0</b></div><div class="hint">Tippen zum Wechseln · Überlebe so lange wie möglich</div></section>
+<section id="game" class="hidden"><div class="hud"><div class="pill">COMBO <b id="combo">x0</b></div><div class="score"><div class="n" id="score">0</div><div class="l">SCORE</div></div><div class="pill">BEST <b id="bestHud">0</b></div></div><div id="toast" class="toast">PERFECT FLIP</div><div id="flash" class="flash"></div></section>
+<section id="over" class="screen gameover hidden"><div class="small">RUN OVER</div><h2 id="finalScore">0</h2><div class="stats"><div class="stat"><b id="finalBest">0</b><span>BEST</span></div><div class="stat"><b id="finalCombo">x0</b><span>MAX COMBO</span></div></div><button id="again" class="play">TRY AGAIN</button><div class="row"><button id="home" class="secondary">HOME</button></div><div class="tip">Jeder Run ist anders. Schaffst du deinen Bestwert?</div></section>
+</div>
 <script>
-const canvas=document.getElementById('game'),ctx=canvas.getContext('2d'),hint=document.getElementById('hint');
-let W=0,H=0,dpr=1,state='menu',score=0,best=Number(localStorage.getItem('flipfallBest')||0),topLane=true,player,obstacles=[],last=0,spawn=0,elapsed=0,flash=0;
-function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',resize);resize();
-function laneY(top){return top?H*.31:H*.69}
-function start(){state='playing';score=0;elapsed=0;spawn=.2;obstacles=[];topLane=true;player={x:W*.23,y:laneY(true),vy:0,flip:0};flash=0;hint.textContent='TIPPE ZUM FLIPPEN'}
-function end(){state='gameover';best=Math.max(best,score);localStorage.setItem('flipfallBest',best);hint.textContent=''}
-function flip(){if(state!=='playing')return;topLane=!topLane;player.flip=1;player.vy=0;player.target=laneY(topLane)}
-function addObstacle(){let top=Math.random()<.5;let y=laneY(top);let w=28+Math.random()*28;obstacles.push({x:W+40,y,w,h:54,top,passed:false})}
-function update(dt){if(state!=='playing')return;elapsed+=dt;flash=Math.max(0,flash-dt);let target=laneY(topLane);let ease=Math.min(1,dt*12);player.y+=(target-player.y)*ease;player.flip=Math.max(0,player.flip-dt*5);spawn-=dt;if(spawn<=0){addObstacle();spawn=Math.max(.52,1.18-elapsed*.012)}let speed=Math.min(720,300+elapsed*12);for(const o of obstacles){o.x-=speed*dt;if(!o.passed&&o.x+o.w<player.x-16){o.passed=true;score++;flash=.08}}
-obstacles=obstacles.filter(o=>o.x>-80);for(const o of obstacles){if(Math.abs(o.y-player.y)<46&&o.x<player.x+22&&o.x+o.w>player.x-22){end();break}}}
-function roundRect(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fill()}
-function draw(){ctx.clearRect(0,0,W,H);let g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#0b0d14');g.addColorStop(1,'#050609');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-// subtle grid
-ctx.globalAlpha=.08;ctx.strokeStyle='#fff';ctx.lineWidth=1;for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}ctx.globalAlpha=1;
-if(state==='menu'){drawMenu();return}drawWorld();if(state==='gameover')drawGameOver()}
-function drawMenu(){ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='900 52px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillText('FLIPFALL',W/2,H*.31);ctx.fillStyle='#9a9ca5';ctx.font='700 13px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillText('ONE TAP. ONE CHANCE.',W/2,H*.31+28);button(W/2,H*.52,220,64,'PLAY');ctx.fillStyle='#777';ctx.font='600 13px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillText('BEST  '+best,W/2,H*.66);ctx.fillStyle='#555';ctx.font='500 12px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillText('Tippe, um die Schwerkraft zu wechseln',W/2,H*.74)}
-function button(x,y,w,h,label){ctx.fillStyle='#fff';roundRect(x-w/2,y-h/2,w,h,18);ctx.fillStyle='#08090d';ctx.font='900 17px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillText(label,x,y+6)}
-function drawWorld(){// lanes
-ctx.strokeStyle='#252833';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,laneY(true)+34);ctx.lineTo(W,laneY(true)+34);ctx.moveTo(0,laneY(false)-34);ctx.lineTo(W,laneY(false)-34);ctx.stroke();
-ctx.fillStyle='#fff';ctx.font='900 22px -apple-system,BlinkMacSystemFont,sans-serif';ctx.textAlign='left';ctx.fillText(score,22,42);ctx.textAlign='right';ctx.fillStyle='#777';ctx.font='700 12px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillText('BEST '+best,W-22,40);
-for(const o of obstacles){ctx.fillStyle='#fff';roundRect(o.x,o.y-o.h/2,o.w,o.h,10)}
-// player
-ctx.save();ctx.translate(player.x,player.y);let s=1+player.flip*.12;ctx.scale(s,s);ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,21,0,Math.PI*2);ctx.fill();ctx.fillStyle='#0a0b0f';ctx.beginPath();ctx.arc(7,-5,3,0,Math.PI*2);ctx.fill();ctx.restore();
-if(flash>0){ctx.globalAlpha=flash*3;ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.globalAlpha=1}}
-function drawGameOver(){ctx.fillStyle='rgba(0,0,0,.62)';ctx.fillRect(0,0,W,H);ctx.textAlign='center';ctx.fillStyle='#fff';ctx.font='900 38px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillText('GAME OVER',W/2,H*.32);ctx.fillStyle='#aaa';ctx.font='700 14px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillText('SCORE',W/2,H*.42);ctx.fillStyle='#fff';ctx.font='900 54px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillText(score,W/2,H*.49);ctx.fillStyle='#777';ctx.font='700 13px -apple-system,BlinkMacSystemFont,sans-serif';ctx.fillText('BEST  '+best,W/2,H*.55);button(W/2,H*.67,220,58,'TRY AGAIN');button(W/2,H*.77,220,58,'HOME')}
-function pos(e){return e.touches&&e.touches[0]?{x:e.touches[0].clientX,y:e.touches[0].clientY}:{x:e.clientX,y:e.clientY}}
-function tap(e){e.preventDefault();let p=pos(e);if(state==='menu'){if(p.y>H*.45&&p.y<H*.59)start();else start()}else if(state==='playing')flip();else{if(p.y>H*.62&&p.y<H*.72)start();else if(p.y>H*.72&&p.y<H*.84){state='menu';hint.textContent=''}}}
-canvas.addEventListener('pointerdown',tap,{passive:false});
-function loop(t){let dt=Math.min(.033,(t-last)/1000||0);last=t;update(dt);draw();requestAnimationFrame(loop)}requestAnimationFrame(loop);
-</script>
-</body></html>
+const cv=document.getElementById('c'),ctx=cv.getContext('2d'),DPR=Math.min(devicePixelRatio||1,2);let W,H,scale;
+function resize(){W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);scale=Math.min(W/390,H/844)}addEventListener('resize',resize);resize();
+const $=id=>document.getElementById(id);let best=+localStorage.getItem('ff_best')||0;$('bestMenu').textContent=best;
+let mode='menu',last=0,t=0,score=0,combo=0,maxCombo=0,player,obs=[],particles=[],stars=[],shake=0,spawn=0,speed=330,runTime=0;
+for(let i=0;i<90;i++)stars.push({x:Math.random(),y:Math.random(),r:Math.random()*1.6+.2,a:Math.random()*.65+.15,s:Math.random()*2+1});
+function reset(){mode='game';$('menu').classList.add('hidden');$('over').classList.add('hidden');$('game').classList.remove('hidden');score=0;combo=0;maxCombo=0;runTime=0;spawn=.55;speed=330;obs=[];particles=[];shake=0;player={lane:1,y:0,target:1,vy:0,rot:0,trail:[]};updateHud()}
+function updateHud(){$('score').textContent=score;$('combo').textContent='x'+combo;$('bestHud').textContent=best}
+function flip(){if(mode!=='game')return;let old=player.target;player.target=1-player.target;player.vy=0;player.rot+=Math.PI;combo++;maxCombo=Math.max(maxCombo,combo);burst(player.x,player.y,14,'flip');if(old!==player.target){$('toast').textContent=combo%5===0?'PERFECT STREAK!':'FLIP!';$('toast').classList.add('show');setTimeout(()=>$('toast').classList.remove('show'),260)}updateHud()}
+function burst(x,y,n,type){for(let i=0;i<n;i++){let a=Math.random()*Math.PI*2,sp=(type==='death'?80:40)+Math.random()*170;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.35+Math.random()*.4,max:.7,type})}}
+function spawnObstacle(){let lane=Math.random()<.5?0:1;let w=28+Math.random()*24,h=38+Math.random()*36;obs.push({x:W+50,y:lane,w,h,lane,passed:false,phase:Math.random()*9});}
+function die(){if(mode!=='game')return;mode='over';burst(player.x,player.y,42,'death');shake=14;setTimeout(()=>{$('finalScore').textContent=score;$('finalBest').textContent=best;$('finalCombo').textContent='x'+maxCombo;$('over').classList.remove('hidden')},280);if(score>best){best=score;localStorage.setItem('ff_best',best);$('bestMenu').textContent=best} }
+function playerPos(){let top=H*.29,bot=H*.71;let target=player.target?bot:top;player.y+=(target-player.y)*Math.min(1,1- Math.pow(.001,1/60));player.x=W*.27;}
+function update(dt){t+=dt;if(mode!=='game')return;runTime+=dt;spawn-=dt;if(spawn<=0){spawnObstacle();spawn=Math.max(.48,1.05-runTime*.012)}speed=Math.min(620,330+runTime*12);playerPos();player.rot+=dt*3.2;player.trail.push({x:player.x,y:player.y,a:1});if(player.trail.length>12)player.trail.shift();
+for(let o of obs){o.x-=speed*dt;o.phase+=dt*4;if(!o.passed&&o.x<player.x-28){o.passed=true;score++;if(combo%4===0)score++;updateHud();burst(player.x+10,player.y,7,'score')}
+let py=player.y, laneY=o.lane?H*.71:H*.29;let hitX=Math.abs(o.x-player.x)<(o.w/2+16),hitY=Math.abs(laneY-py)<(o.h/2+15);if(hitX&&hitY)die()}
+obs=obs.filter(o=>o.x>-80);for(let p of particles){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=170*dt;p.life-=dt}particles=particles.filter(p=>p.life>0);shake*=Math.pow(.02,dt);}
+function draw(){ctx.clearRect(0,0,W,H);let sx=shake?(Math.random()-.5)*shake:0,sy=shake?(Math.random()-.5)*shake:0;ctx.save();ctx.translate(sx,sy);
+let g=ctx.createRadialGradient(W*.5,H*.5,0,W*.5,H*.5,Math.max(W,H)*.7);g.addColorStop(0,'#101936');g.addColorStop(1,'#060811');ctx.fillStyle=g;ctx.fillRect(-20,-20,W+40,H+40);
+for(let s of stars){let tw=s.a*(.65+.35*Math.sin(t*s.s+s.x*20));ctx.globalAlpha=tw;ctx.fillStyle='#d9eaff';ctx.beginPath();ctx.arc(s.x*W,s.y*H,s.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
+if(mode!=='menu'){drawArena();drawParticles();drawPlayer()}ctx.restore();requestAnimationFrame(loop)}
+function drawArena(){let top=H*.29,bot=H*.71;ctx.save();for(let y of [top,bot]){let grad=ctx.createLinearGradient(0,y-5,0,y+5);grad.addColorStop(0,'#67e8f9');grad.addColorStop(.5,'#8b5cf6');grad.addColorStop(1,'#ffffff00');ctx.fillStyle=grad;ctx.shadowBlur=18;ctx.shadowColor='#67e8f9';ctx.fillRect(0,y-2,W,4);ctx.shadowBlur=0;ctx.strokeStyle='#ffffff0d';ctx.lineWidth=1;ctx.setLineDash([5,12]);ctx.beginPath();ctx.moveTo(0,y+20);ctx.lineTo(W,y+20);ctx.stroke();ctx.setLineDash([])}ctx.restore();
+for(let o of obs){let y=o.lane?bot:top;ctx.save();ctx.translate(o.x,y);let pulse=1+Math.sin(o.phase)*.06;ctx.scale(pulse,pulse);ctx.shadowBlur=24;ctx.shadowColor='#8b5cf6';let rg=ctx.createLinearGradient(-o.w/2,-o.h/2,o.w/2,o.h/2);rg.addColorStop(0,'#f472b6');rg.addColorStop(1,'#8b5cf6');ctx.fillStyle=rg;roundRect(ctx,-o.w/2,-o.h/2,o.w,o.h,9);ctx.fill();ctx.fillStyle='#fff9';ctx.fillRect(-o.w*.25,-2,o.w*.5,4);ctx.restore()}}
+function drawPlayer(){let p=player;for(let i=0;i<p.trail.length;i++){let q=p.trail[i],a=(i/p.trail.length)*.18;ctx.globalAlpha=a;ctx.fillStyle='#67e8f9';ctx.beginPath();ctx.arc(q.x,q.y,18*(i/p.trail.length),0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.shadowBlur=28;ctx.shadowColor='#67e8f9';let rg=ctx.createLinearGradient(-18,-18,18,18);rg.addColorStop(0,'#ffffff');rg.addColorStop(.45,'#67e8f9');rg.addColorStop(1,'#8b5cf6');ctx.fillStyle=rg;ctx.beginPath();ctx.arc(0,0,17,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle='#07101e';ctx.beginPath();ctx.arc(5,-5,4,0,Math.PI*2);ctx.fill();ctx.restore()}
+function drawParticles(){for(let p of particles){ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.type==='death'?'#f472b6':'#67e8f9';ctx.beginPath();ctx.arc(p.x,p.y,2+p.life*3,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+function roundRect(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
+function loop(now){let dt=Math.min(.033,(now-last)/1000||.016);last=now;update(dt);draw()}
+$('play').onclick=reset;$('again').onclick=reset;$('home').onclick=()=>{mode='menu';$('over').classList.add('hidden');$('game').classList.add('hidden');$('menu').classList.remove('hidden');$('bestMenu').textContent=best};addEventListener('pointerdown',e=>{if(e.target.tagName==='BUTTON')return;if(mode==='game')flip()},{passive:true});requestAnimationFrame(loop);
+</script></body></html>
